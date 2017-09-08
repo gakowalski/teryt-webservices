@@ -1,0 +1,10 @@
+<phpunit bootstrap="bootstrap.php" verbose="true">
+  <testsuites>
+    <testsuite name="TERYT Webservices">
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+  <logging>
+      <log type="testdox-text" target="test-phpunit-output.txt"/>
+  </logging>
+</phpunit>
