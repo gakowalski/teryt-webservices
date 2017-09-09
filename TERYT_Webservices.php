@@ -1,24 +1,50 @@
 <?php
-class WsseAuthHeader extends SoapHeader {
-    //private $wss_ns = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
-    private $wss_ns = 'https://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd';
 
-    function __construct($user, $pass, $ns = null) {
-        if ($ns) {
-            $this->wss_ns = $ns;
-        }
+class TERYT_SoapClient extends SoapClient {
+  public function __doRequest ($request , $location , $action , $version, $one_way = 0)
+  {
+    $created = date('c');
+    $nonce = openssl_random_pseudo_bytes( 16 );
+    $nonce_encoded = base64_encode( bin2hex( $nonce ) );
+    $header = '
+    <SOAP-ENV:Header xmlns:wsa="http://www.w3.org/2005/08/addressing">
+  		<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+  			<wsse:UsernameToken wsu:Id="UsernameToken-'. $created .'">
+  				<wsse:Username>TestPubliczny</wsse:Username>
+  				<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">1234abcd</wsse:Password>
+  				<wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">'. $nonce_encoded .'</wsse:Nonce>
+  				<wsu:Created>'. $created .'</wsu:Created>
+  			</wsse:UsernameToken>
+  		</wsse:Security>
+  		<wsa:Action>'. $action .'</wsa:Action>
+  	</SOAP-ENV:Header>
+    ';
 
-        $auth = new stdClass();
-        $auth->Username = new SoapVar($user, XSD_STRING, NULL, $this->wss_ns, NULL, $this->wss_ns);
-        $auth->Password = new SoapVar($pass, XSD_STRING, NULL, $this->wss_ns, NULL, $this->wss_ns);
+    $xml = explode('<SOAP-ENV:Body>', $request);
+    $request = str_replace('SOAP-ENV', 'soapenv', $xml[0] . $header . '<SOAP-ENV:Body>' . $xml[1]);
 
-        $username_token = new stdClass();
-        $username_token->UsernameToken = new SoapVar($auth, SOAP_ENC_OBJECT, NULL, $this->wss_ns, 'UsernameToken', $this->wss_ns);
-
-        $security_sv = new SoapVar(
-                new SoapVar($username_token, SOAP_ENC_OBJECT, NULL, $this->wss_ns, 'UsernameToken', $this->wss_ns), SOAP_ENC_OBJECT, NULL, $this->wss_ns, 'Security', $this->wss_ns);
-        parent::__construct($this->wss_ns, 'Security', $security_sv, true);
-    }
+    $request_old = '
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  	<soapenv:Header xmlns:wsa="http://www.w3.org/2005/08/addressing">
+  		<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+  			<wsse:UsernameToken wsu:Id="UsernameToken-'. $created .'">
+  				<wsse:Username>TestPubliczny</wsse:Username>
+  				<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">1234abcd</wsse:Password>
+  				<wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">'. $nonce_encoded .'</wsse:Nonce>
+  				<wsu:Created>'. $created .'</wsu:Created>
+  			</wsse:UsernameToken>
+  		</wsse:Security>
+  		<wsa:Action>'. $action .'</wsa:Action>
+  	</soapenv:Header>
+  	<soapenv:Body>
+  		<tem:CzyZalogowany/>
+  	</soapenv:Body>
+    </soapenv:Envelope>
+    ';
+    print_r($request);
+    print_r($request_old);
+    return parent::__doRequest($request , $location, $action, $version, $one_way);
+  }
 }
 
 class TERYT_Webservices
@@ -76,28 +102,11 @@ class TERYT_Webservices
 		$this->xml_response = null;
 		$this->xml_request = null;
 
-		$stream_options = array(
-			'http' => array(
-				//'timeout' => 900.0,		//< overrides default_socket_timeout
-				//'header' => 'Content-Type: text/xml; charset=utf-8',
-			),
-      /*
-			'ssl' => array(
-				'allow_self_signed'	=> true,
-			),
-      */
-		);
-
-		$stream_context = stream_context_create($stream_options);
-
     $this->soap_options = array(
-      'soap_version'   => SOAP_1_2,
+      'soap_version'   => SOAP_1_1,
 			'cache_wsdl'     => WSDL_CACHE_MEMORY,
 			'encoding'       => 'utf8',
       'keep_alive'     => false,
-      //'login'          => $user,
-			//'password'       => $pass,
-			'stream_context' => $stream_context,
 			'trace'					 => $trace,
 			'compression'		 => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP | SOAP_COMPRESSION_DEFLATE,
     );
@@ -111,9 +120,8 @@ class TERYT_Webservices
   public function get_webservice()
   {
     $url = $this->instances[$this->instance];
-    $webservice = new SoapClient("$url/wsdl/terytws1.wsdl", $this->soap_options);
-    $webservice->__setLocation("$url/terytws1.svc");
-    //$webservice->__setSoapHeaders(array(new WsseAuthHeader($this->user, $this->pass)));
+    $webservice = new TERYT_SoapClient("$url/wsdl/terytws1.wsdl", $this->soap_options);
+    //$webservice->__setLocation("$url/terytws1.svc");
     return $webservice;
   }
 
