@@ -5,9 +5,6 @@ class TERYT_SoapClient extends SoapClient {
   protected $pass;
 
   public function __construct ($wsdl, $options) {
-    if ($wsdl == 'production')  $wsdl = 'https://uslugaterytws1.stat.gov.pl/wsdl/terytws1.wsdl';
-    if ($wsdl == 'test')        $wsdl = 'https://uslugaterytws1test.stat.gov.pl/wsdl/terytws1.wsdl';
-
     $this->user = $options['ws-security-login'];
     $this->pass = $options['ws-security-password'];
     parent::__construct($wsdl, $options);
