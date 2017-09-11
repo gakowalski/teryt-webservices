@@ -25,6 +25,10 @@ class TERYT_Webservices
     $this->soap_client = new TERYT_SoapClient($wsdl, $soap_options);
 	}
 
+  /**
+   * Always returns true; used to test proper connection with TERYT webservices.
+   * @return boolean  Always true.
+   */
   public function is_logged_in() {
     $result = $this->soap_client->CzyZalogowany();
     if (isset($result->CzyZalogowanyResult)) {
@@ -118,11 +122,13 @@ class TERYT_Webservices
       $result = $this->soap_client->PobierzListeWojewodztw(array(
         'DataStanu' => $when,
       ));
+      $result = $result->PobierzListeWojewodztwResult->JednostkaTerytorialna;
     } else {
       $result = $this->soap_client->PobierzListeWojewodztwWRegionie(array(
         'Reg' => $region_id,
         'DataStanu' => $when,
       ));
+      $result = $result->PobierzListeWojewodztwWRegionieResult->JednostkaNomenklaturyNTS;
     }
 
     return $result;
@@ -259,7 +265,7 @@ class TERYT_Webservices
       'DataStanu,' => $when,
     ));
 
-    return $result;
+    return $result->WyszukajMiejscowoscWRejestrzeResult;
   }
 
   public function regions($when = null) {
@@ -280,7 +286,7 @@ class TERYT_Webservices
       'DataStanu' => $when,
     ));
 
-    return $result;
+    return $result->PobierzListePodregionowResult;
   }
 
   public function street_wide_search($street_name, $prefix, $town_name) {
@@ -290,7 +296,7 @@ class TERYT_Webservices
       'nazwamiejscowosci' => $town_name,
     ));
 
-    return $result;
+    return $result->WyszukajUliceResult;
   }
 
   public function streets($province_id, $district_id, $commune_id, $type_id, $town_id, $official = true, $when = null) {
@@ -307,7 +313,7 @@ class TERYT_Webservices
       'DataStanu' => $when,
     ));
 
-    return $result;
+    return $result->PobierzListeUlicDlaMiejscowosciResult;
   }
 
   public function streets_in_division($street_name, $prefix, $street_id, $identifiers, $when = null) {
@@ -321,7 +327,7 @@ class TERYT_Webservices
       'DataStanu' => $when,
     ));
 
-    return $result;
+    return $result->WyszukajMiejscowoscWRejestrzeResult;
   }
 
   /**
