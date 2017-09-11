@@ -4,7 +4,7 @@ require 'TERYT_SoapClient.php';
 
 class TERYT_Webservices
 {
-  protected $soap_client;
+  public $soap_client;
 
   public function __construct($user, $pass, $instance = 'production', $trace = false)
   {
@@ -26,6 +26,36 @@ class TERYT_Webservices
 	}
 
   public function is_logged_in() {
-		return $this->soap_client->CzyZalogowany();
+    $result = $this->soap_client->CzyZalogowany();
+    if (isset($result->CzyZalogowanyResult)) {
+      return $result->CzyZalogowanyResult;
+    } else {
+      throw new Exception("Response object doesn't contain expected members");
+    }
   }
+
+  /**
+   * Returns last modification time of the registry.
+   *
+   * @param  string $register Name of the registry, e.g. TERC, SIMC, ULIC, NTS
+   * @return string           Last modification time, e.g. 2017-01-01T00:00:00
+   */
+  public function last_modified($register) {
+    switch ($register) {
+      case 'TERC':  $method = 'PobierzDateAktualnegoKatTerc'; break;
+      case 'SIMC':  $method = 'PobierzDateAktualnegoKatSimc'; break;
+      case 'ULIC':  $method = 'PobierzDateAktualnegoKatUlic'; break;
+      default:      $method = "PobierzDateAktualnegoKat$register";
+    }
+    $result = $this->soap_client->$method();
+
+    $property = $method . 'Result';
+    if (property_exists($result, $property)) {
+      return $result->$property;
+    } else {
+      throw new Exception("Response object doesn't contain expected members");
+    }
+  }
+
+
 }
