@@ -73,6 +73,12 @@ class TERYT_Webservices
     return $result_array;
   }
 
+  /**
+   * Returns multidimensional array containing town type names, descriptions and symbols (IDs).
+   *
+   * @param  string $when Date of the registry contents to be queries; in YYYY-MM-DD format.
+   * @return array
+   */
   public function town_types($when = null) {
     if ($when === null) $when = date('Y-m-d');
 
@@ -80,11 +86,11 @@ class TERYT_Webservices
       'DataStanu' => $when,
     ));
 
-    return $result;
+    return $result->PobierzSlownikRodzajowSIMCResult->RodzajMiejscowosci;
   }
 
   public function street_prefixes() {
-    return $this->soap_client->PobierzSlownikCechULIC();
+    return $this->soap_client->PobierzSlownikCechULIC()->PobierzSlownikCechULICResult->string;
   }
 
   public function divisions($division_name, $identifiers = null, $category = null, $when = null) {
@@ -172,31 +178,51 @@ class TERYT_Webservices
   }
 
   /**
-   * Search for towns by full name, part of a name or ID.
+   * Return single town object.
    *
-   * @param  [type] $town_name [description]
-   * @param  [type] $town_id   [description]
-   * @return [type]            [description]
+   * @param  string $town_id
+   * @return object
    */
-  public function town_wide_search($town_name, $town_id) {
+  public function town($town_id) {
     $result = $this->soap_client->WyszukajMiejscowosc(array(
-      'nazwaMiejscowosci' => $town_name,
-      'identyfikatorMiejscowosci,' => $town_id,
-    ));
-
-    return $result;
-  }
-
-  public function town_narrow_search($province_name, $district_name, $commune_name, $town_name, $town_id) {
-    $result = $this->soap_client->WyszukajMiejscowoscWJPT(array(
-      'nazwaWoj' => $province_name,
-      'nazwaPow' => $district_name,
-      'nazwaGmi' => $commune_name,
-      'nazwaMiejscowosci' => $town_name,
       'identyfikatorMiejscowosci' => $town_id,
     ));
+    return $result->WyszukajMiejscowoscResult->Miejscowosc;
+  }
 
-    return $result;
+  /**
+   * Returns list of towns with names beginning on given string and - optionally - located in provinces, districts or communes whose names start with given strnigs.
+   *
+   * @param  string $town_name    [description]
+   * @param  array  $params_array (optional) Array of string. Possible keys: 'province', 'district', 'commune'.
+   * @return [type]               [description]
+   */
+  public function town_search($town_name, $params_array = array()) {
+    if (empty($params_array)) {
+      $result = $this->soap_client->WyszukajMiejscowosc(array(
+        'nazwaMiejscowosci' => $town_name,
+      ));
+      $result = $result->WyszukajMiejscowoscResult;
+    } else {
+      $true_params = array();
+      $true_params['nazwaMiejscowosci'] = $town_name;
+      $true_params['nazwaWoj']          = isset($params_array['province'])  ? $params_array['province'] : '';
+      $true_params['nazwaPow']          = isset($params_array['district'])  ? $params_array['district'] : '';
+      $true_params['nazwaGmi']          = isset($params_array['commune'])   ? $params_array['commune'] : '';
+
+      $result = $this->soap_client->WyszukajMiejscowoscWJPT($true_params);
+      $result = $result->WyszukajMiejscowoscWJPTResult;
+    }
+
+    if (property_exists($result, 'Miejscowosc')) {
+      if (is_array($result->Miejscowosc)) {
+        return $result->Miejscowosc;
+      } else {
+        return array($result->Miejscowosc);
+      }
+    } else {
+      return array();
+    }
   }
 
   public function towns($province, $district, $commune, $type_id = null, $when = null) {
@@ -243,7 +269,7 @@ class TERYT_Webservices
       'DataStanu' => $when,
     ));
 
-    return $result;
+    return $result->PobierzListeRegionowResult->JednostkaNomenklaturyNTS;
   }
 
   public function subregions($region_id, $when = null) {
