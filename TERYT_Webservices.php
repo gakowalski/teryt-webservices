@@ -319,7 +319,7 @@ class TERYT_Webservices
   public function streets_in_division($street_name, $prefix, $street_id, $identifiers, $when = null) {
     if ($when === null) $when = date('Y-m-d');
 
-    $result = $this->soap_client->WyszukajMiejscowoscWRejestrze(array(
+    $result = $this->soap_client->WyszukajUliceWRejestrze(array(
       'nazwa' => $street_name,
       'cecha' => $prefix,
       'identyfikator' => $street_id,
@@ -327,7 +327,7 @@ class TERYT_Webservices
       'DataStanu' => $when,
     ));
 
-    return $result->WyszukajMiejscowoscWRejestrzeResult;
+    return $result->WyszukajUliceWRejestrzeResult;
   }
 
   /**
